@@ -7,13 +7,13 @@ import HashiHead from '@hashicorp/react-head'
 export default function VmwareIndex() {
   return (
     <>
-      <HashiHead is={Head} title="VMWare Integration | Vagrant by HashiCorp" />
+      <HashiHead is={Head} title="VMware Integration | Vagrant by HashiCorp" />
       <section className={s.header}>
         <div className="g-grid-container">
           <div className={s.logos}>
             <img src="/img/logo-text.svg" alt="Vagrant Logo" />
             <span>+</span>
-            <img src="/img/vmware.svg" alt="VMWare Logo" />
+            <img src="/img/vmware.svg" alt="VMware Logo" />
           </div>
           <h1 className={s.mainHeadline}>
             Supercharged Development Environments
@@ -122,7 +122,7 @@ export default function VmwareIndex() {
           </p>
           <div className={s.purchaseForm}>
             <p className="g-type-body">
-              <strong>VMware Fusion 11 / VMware Workstation 15 or lower</strong>
+              <strong>VMware Fusion 12 / VMware Workstation 16 or lower</strong>
             </p>
             <VMWarePurchaseForm productId="7255390650419" />
           </div>

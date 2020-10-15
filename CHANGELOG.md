@@ -4,16 +4,83 @@ FEATURES:
 
 IMPROVEMENTS:
 
+- command/cloud: Add --force flag to `version release` command [GH-11912]
+- command/cap: Add ability to specify target [GH-11965]
+- core:  Switch from unmaintained gem erubis to erubi [GH-11893]
+- core: Download Vagrant boxes using auth headers [GH-11835]
+- tests: Add integration tests for Docker provider [GH-11907]
+
+BUG FIXES:
+
+- core/synced_folders: Don't persist synced folders to fstab is guest is not reachable [GH-11900]
+- core: Don't try to recover machine without a uuid [GH-11863]
+- config/disks: Transform provider specific config to common form [GH-11939] 
+- guest/linux: Check for /etc/fstab before trying to modify [GH-11897]
+- guest/linux: Create an /etc/fstab if does not exist [GH-11909]
+- guest/linux: Persist SMB mounts [GH-11846]
+- guest/debian: Set hostname in /etc/hosts as first step to changing hostname [GH-11885]
+- guest/rhel: Check for existence of network files before trying to update them [GH-11877]
+- tests: Remove rsync dependency from tests [GH-11889]
+
+## 2.2.10 (August 24, 2020)
+
+FEATURES:
+
+- hyperv/disks: Add ability to manage virtual disks for guests [GH-11541]
+
+IMPROVEMENTS:
+
+- core: Allow provisioners to be run when a communicator is not available [GH-11579]
+- core: Add `autocomplete` command that allows for install of bash or zsh autocomplete scripts [GH-11523]
+- core: Update to childprocess gem to 4.0.0 [GH-11717]
+- core: Add action to wait for cloud-init to finish running [GH-11773]
+- core: Update to net-ssh to 6.0 and net-sftp to 3.0 [GH-11621]
+- core: Optimize port in use check for faster validation [GH-11810]
+- core: Support for Ruby 2.7 [GH-11814]
+- core: Add synced folder capabilities for mount options and default fstab modification behavior [GH-11797]
+- guest/arch: Use systemd-networkd to configure networking for guests [GH-11400]
+- guest/haiku: Rsync install for rsync synced folders [GH-11614]
+- guest/solaris11: Add guest capability shell_expand_guest_path [GH-11759]
+- host/darwin: Add ability to build ISO [GH-11694]
+- hosts/linux: Add ability to build ISO [GH-11750]
+- hosts/windows: Add ability to build ISO [GH-11750]
+- providers/hyperv: Add support for SecureBootTemplate setting on import [GH-11756]
+- providers/hyperv: Add support for EnhancedSessionTransportType [GH-11014]
+- virtualbox/disks: Add ability to manage virtual dvds for guests [GH-11613]
+
 BUG FIXES:
 
 - core: Ensure MapCommandOptions class is required [GH-11629]
+- core: Fix `:all` special value on triggers [GH-11688]
+- core: Ensure network addresses have a valid netmask [GH-11679]
+- core: Recover local machine metadata in global index [GH-11656]
+- core: Print CLI help message is ambiguous option provided [GH-11746]
+- core: Update how `/etc/hosts` gets updated for darwin, freebsd and openbsd [GH-11719]
+- core: Capture `[3J` escape sequence [GH-11807]
+- core: Treat empty box value as invalid [GH-11618]
+- core: Allow forwarding ports to unknown addresses [GH-11810]
+- core: Scrub credentials as whole words [GH-11837]
 - commands/destroy: Add gracefull option to switch beween gracefully or forcefully shutting down a vm [GH-11628]
+- communicator/ssh: Raise an error for a nil exit status [GH-11721]
+- communicator/winrm: Check for nil return from querying for forwarded ports [GH-11831]
 - config/vm: Add option `allow_hosts_modification` to allow/disable Vagrant editing the guests `/etc/hosts` file [GH-11565]
 - config/vm: Add config option `hostname` to `config.vm.network` [GH-11566]
+- config/vm: Don't ignore NFS synced folders on Windows hosts [GH-11631]
+- host: Use regular port check for loopback addresses [GH-11654]
+- host: Allow windows and linux hosts to detach from rdp process [GH-11732]
+- host/windows: Properly register SMB password validation capability [GH-11795]
+- guests: Allow setting of hostname according to `hostname` option for multiple guests [GH-11704]
+- guest/alpine: Allow setting of hostname according to `hostname` option [GH-11718]
 - guest/esxi: Be more permissive with permissions of ssh directory [GH-11587]
-- guest/linux: Add virtual box shared folders to guest fstab [GH-11570] 
+- guest/linux: Add virtual box shared folders to guest fstab [GH-11570]
+- guest/suse: Allow setting of hostname according to `hostname` option [GH-11567]
 - providers/docker: Ensure new containers don't grab existing bound ports [GH-11602]
+- providers/hyperv: Fix check for secure boot [GH-11809]
+- providers/virtualbox: Fix inability to create disk with same name across multiple guests [GH-11767]
+- provisioners/docker: Allow to specify docker image version using the `run` option [GH-11806]
+- provisioners/file: Allow creating empty folders [GH-11805]
 - provisioners/shell: Ensure Windows shell provisioner gets the correct file extension [GH-11644]
+- util/powershell: Use correct powershell executable for privileged commands [GH-11787]
 
 ## 2.2.9 (May 07, 2020)
 

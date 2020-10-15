@@ -1,3 +1,4 @@
+require "cgi"
 require "uri"
 
 require "log4r"
@@ -28,8 +29,9 @@ module Vagrant
         "vagrantup.com".freeze
       ].freeze
 
-      attr_reader :source
+      attr_accessor :source
       attr_reader :destination
+      attr_accessor :headers
 
       def initialize(source, destination, options=nil)
         options     ||= {}
@@ -41,8 +43,8 @@ module Vagrant
         begin
           url = URI.parse(@source)
           if url.scheme && url.scheme.start_with?("http") && url.user
-            auth = "#{URI.unescape(url.user)}"
-            auth += ":#{URI.unescape(url.password)}" if url.password
+            auth = "#{CGI.unescape(url.user)}"
+            auth += ":#{CGI.unescape(url.password)}" if url.password
             url.user = nil
             url.password = nil
             options[:auth] ||= auth
@@ -57,7 +59,7 @@ module Vagrant
         @ca_cert     = options[:ca_cert]
         @ca_path     = options[:ca_path]
         @continue    = options[:continue]
-        @headers     = options[:headers]
+        @headers     = Array(options[:headers])
         @insecure    = options[:insecure]
         @ui          = options[:ui]
         @client_cert = options[:client_cert]

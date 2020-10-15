@@ -5,6 +5,7 @@ describe VagrantPlugins::ProviderVirtualBox::Driver::Version_5_0 do
   include_context "virtualbox"
 
   let(:vbox_version) { "5.0.0" }
+  let(:controller_name) { "controller" }
 
   subject { VagrantPlugins::ProviderVirtualBox::Driver::Version_5_0.new(uuid) }
 
@@ -88,6 +89,101 @@ OUTPUT
       it "should raise an error" do
         expect { subject.import(ovf) }.to raise_error(Vagrant::Errors::VirtualBoxNoName)
       end
+    end
+  end
+
+  describe "#attach_disk" do
+    it "attaches a device to the specified controller" do
+      expect(subject).to receive(:execute) do |*args|
+        storagectl = args[args.index("--storagectl") + 1]
+        expect(storagectl).to eq(controller_name)
+      end
+      subject.attach_disk(controller_name, anything, anything, anything, anything)
+    end
+  end
+
+  describe "#remove_disk" do
+    it "removes a disk from the specified controller" do
+      expect(subject).to receive(:execute) do |*args|
+        storagectl = args[args.index("--storagectl") + 1]
+        expect(storagectl).to eq(controller_name)
+      end
+      subject.remove_disk(controller_name, anything, anything)
+    end
+  end
+
+  describe "#read_storage_controllers" do
+    before do
+      allow(subject).to receive(:show_vm_info).and_return(
+        { "storagecontrollername0" => "SATA Controller",
+          "storagecontrollertype0" => "IntelAhci",
+          "storagecontrollermaxportcount0" => "30",
+          "SATA Controller-0-0" => "/tmp/primary.vdi",
+          "SATA Controller-ImageUUID-0-0" => "12345",
+          "SATA Controller-1-0" => "/tmp/secondary.vdi",
+          "SATA Controller-ImageUUID-1-0" => "67890" }
+      )
+
+      allow(subject).to receive(:list_hdds).and_return(
+        [
+         {"UUID"=>"12345",
+         "Parent UUID"=>"base",
+         "State"=>"created",
+         "Type"=>"normal (base)",
+         "Location"=>"/tmp/primary.vdi",
+         "Disk Name"=>"primary",
+         "Storage format"=>"VDI",
+         "Capacity"=>"65536 MBytes",
+         "Encryption"=>"disabled"},
+         {"UUID"=>"67890",
+         "Parent UUID"=>"base",
+         "State"=>"created",
+         "Type"=>"normal (base)",
+         "Location"=>"/tmp/secondary.vdi",
+         "Disk Name"=>"primary",
+         "Storage format"=>"VDI",
+         "Capacity"=>"65536 MBytes",
+         "Encryption"=>"disabled"}
+        ]
+      )
+    end
+
+    let(:attachments_result) { [{:port=>"0",
+                                 :device=>"0",
+                                 :uuid=>"12345",
+                                 :location=>"/tmp/primary.vdi",
+                                 :parent_uuid=>"base",
+                                 :state=>"created",
+                                 :type=>"normal (base)",
+                                 :disk_name=>"primary",
+                                 :storage_format=>"VDI",
+                                 :capacity=>"65536 MBytes",
+                                 :encryption=>"disabled"},
+                                {:port=>"1",
+                                 :device=>"0",
+                                 :uuid=>"67890",
+                                 :location=>"/tmp/secondary.vdi",
+                                 :parent_uuid=>"base",
+                                 :state=>"created",
+                                 :type=>"normal (base)",
+                                 :disk_name=>"primary",
+                                 :storage_format=>"VDI",
+                                 :capacity=>"65536 MBytes",
+                                 :encryption=>"disabled"}] }
+
+
+    it "returns a list of storage controllers" do
+      storage_controllers = subject.read_storage_controllers
+
+      expect(storage_controllers.first.name).to eq("SATA Controller")
+      expect(storage_controllers.first.type).to eq("IntelAhci")
+      expect(storage_controllers.first.maxportcount).to eq(30)
+    end
+
+    it "includes attachments for each storage controller" do
+      storage_controllers = subject.read_storage_controllers
+
+      expect(storage_controllers.first.attachments).to eq(attachments_result)
     end
   end
 end

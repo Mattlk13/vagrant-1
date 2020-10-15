@@ -400,7 +400,7 @@ module VagrantPlugins
 
           if Vagrant::Util::Experimental.feature_enabled?("dependency_provisioners")
             opts = {before: before, after: after}
-            prov = VagrantConfigProvisioner.new(name, type.to_sym, opts)
+            prov = VagrantConfigProvisioner.new(name, type.to_sym, **opts)
           else
             prov = VagrantConfigProvisioner.new(name, type.to_sym)
           end
@@ -410,7 +410,9 @@ module VagrantPlugins
         prov.preserve_order = !!options.delete(:preserve_order) if \
           options.key?(:preserve_order)
         prov.run = options.delete(:run) if options.key?(:run)
-        prov.add_config(options, &block)
+        prov.communicator_required = options.delete(:communicator_required) if options.key?(:communicator_required)
+
+        prov.add_config(**options, &block)
         nil
       end
 
@@ -465,7 +467,7 @@ module VagrantPlugins
         disk_config.set_options(options)
 
         # Add provider config
-        disk_config.add_provider_config(provider_options, &block)
+        disk_config.add_provider_config(**provider_options, &block)
 
         if !Vagrant::Util::Experimental.feature_enabled?("disks")
           @logger.warn("Disk config defined, but experimental feature is not enabled. To use this feature, enable it with the experimental flag `disks`. Disk will not be added to internal config, and will be ignored.")
@@ -506,7 +508,6 @@ module VagrantPlugins
 
       def finalize!
         # Defaults
-        @allow_fstab_modification = true if @allow_fstab_modification == UNSET_VALUE
         @allowed_synced_folder_types = nil if @allowed_synced_folder_types == UNSET_VALUE
         @base_mac = nil if @base_mac == UNSET_VALUE
         @base_address = nil if @base_address == UNSET_VALUE
@@ -657,11 +658,6 @@ module VagrantPlugins
             options[:type] = :nfs
           end
 
-          # Ignore NFS on Windows
-          if options[:type] == :nfs && Vagrant::Util::Platform.windows?
-            options.delete(:type)
-          end
-
           if options[:hostpath]  == '.'
             current_dir_shared = true
           end
@@ -729,12 +725,27 @@ module VagrantPlugins
       def validate(machine, ignore_provider=nil)
         errors = _detected_errors
 
+        if @allow_fstab_modification == UNSET_VALUE
+          machine.synced_folders.types.each do |impl_name|
+            inst = machine.synced_folders.type(impl_name)
+            if inst.capability?(:default_fstab_modification) && inst.capability(:default_fstab_modification) == false
+              @allow_fstab_modification = false
+              break
+            end
+          end
+          @allow_fstab_modification = true if @allow_fstab_modification == UNSET_VALUE
+        end
+
         if !box && !clone && !machine.provider_options[:box_optional]
           errors << I18n.t("vagrant.config.vm.box_missing")
         end
 
         if box && clone
           errors << I18n.t("vagrant.config.vm.clone_and_box")
+        end
+
+        if box && box.empty?
+          errors << I18n.t("vagrant.config.vm.box_empty", machine_name: machine.name)
         end
 
         errors << I18n.t("vagrant.config.vm.hostname_invalid_characters", name: machine.name) if \
@@ -905,7 +916,7 @@ module VagrantPlugins
         end
 
         # Validate disks
-        # Check if there is more than one primrary disk defined and throw an error
+        # Check if there is more than one primary disk defined and throw an error
         primary_disks = @disks.select { |d| d.primary && d.type == :disk }
         if primary_disks.size > 1
           errors << I18n.t("vagrant.config.vm.multiple_primary_disks_error",
@@ -913,15 +924,24 @@ module VagrantPlugins
         end
 
         disk_names = @disks.map { |d| d.name }
-        duplicate_names = disk_names.detect{ |d| disk_names.count(d) > 1 }
-        if duplicate_names && duplicate_names.size
+        duplicate_names = disk_names.find_all { |d| disk_names.count(d) > 1 }
+        if duplicate_names.any?
           errors << I18n.t("vagrant.config.vm.multiple_disk_names_error",
-                           name: duplicate_names)
+                           name: machine.name,
+                           disk_names: duplicate_names.uniq.join("\n"))
+        end
+
+        disk_files = @disks.map { |d| d.file }
+        duplicate_files = disk_files.find_all { |d| d && disk_files.count(d) > 1 }
+        if duplicate_files.any?
+          errors << I18n.t("vagrant.config.vm.multiple_disk_files_error",
+                           name: machine.name,
+                           disk_files: duplicate_files.uniq.join("\n"))
         end
 
         @disks.each do |d|
           error = d.validate(machine)
-          errors.concat error if !error.empty?
+          errors.concat(error) if !error.empty?
         end
 
         # Validate clout_init_configs
@@ -1009,7 +1029,7 @@ module VagrantPlugins
             option: "allow_fstab_modification", given: @allow_fstab_modification.class, required: "Boolean"
           )
         end
-        
+
         if ![TrueClass, FalseClass].include?(@allow_hosts_modification.class)
           errors["vm"] << I18n.t("vagrant.config.vm.config_type",
             option: "allow_hosts_modification", given: @allow_hosts_modification.class, required: "Boolean"

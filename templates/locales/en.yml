@@ -127,6 +127,7 @@ en:
       Warning: Chef run list is empty. This may not be what you want.
     cli_interrupt: |-
       Exiting due to interrupt.
+    cloud_init_waiting: Waiting for cloud init to finish running
     container_pulling_single: |-
       -- Image: %{name}
     container_building_single: |-
@@ -164,6 +165,10 @@ en:
       -- Detected newer image for container '%{name}', restarting...
     docker_starting_containers: |-
       Starting Docker containers...
+    hyperv_enable_enhanced_session: |-
+      Setting VM Enhanced session transport type to HvSocket
+    hyperv_disable_enhanced_session: |-
+      Setting VM Enhanced session transport type to disabled/default (VMBus)
     inserted_key: |-
       Key inserted! Disconnecting and reconnecting using new SSH key...
     inserting_insecure_detected: |-
@@ -788,6 +793,11 @@ en:
         Additionally, the created environment must be started with a provider
         matching this provider. For example, if you're using VirtualBox,
         the clone environment must also be using VirtualBox.
+      cloud_init_not_found: |-
+        cloud-init is not found. Please ensure that cloud-init is installed and 
+        available on path for guest '%{guest_name}'.
+      cloud_init_command_failed: |- 
+        cloud init command '%{cmd}' failed on guest '%{guest_name}'.
       command_deprecated: |-
         The command 'vagrant %{name}' has been deprecated and is no longer functional
         within Vagrant.
@@ -832,6 +842,9 @@ en:
         they'll have to be destroyed manually.
 
         Path: %{path}
+      create_iso_host_cap_not_found: |-
+        Vagrant cannot create an iso due to the host capability for creating isos not existing.
+        Vagrant will now exit.
       destroy_requires_force: |-
         Destroy doesn't have a TTY to ask for confirmation. Please pass the
         `--force` flag to force a destroy, otherwise attach a TTY so that
@@ -939,6 +952,18 @@ en:
         ("%{value}") could not be found. Please verify that the plugin is
         installed which implements this host and that the value you used
         for `config.vagrant.host` is correct.
+      iso_build_failed: |-
+        Failed to build iso image. The following command returned an error:
+
+        %{cmd}
+
+        Stdout from the command:
+
+        %{stdout}
+
+        Stderr from the command:
+
+        %{stderr}
       hyperv_virtualbox_error: |-
         Hyper-V and VirtualBox cannot be used together and will result in a
         system crash. Vagrant will now exit. Please disable Hyper-V if you wish
@@ -1435,6 +1460,11 @@ en:
         usually indicates that SSH within the guest machine was unable to
         properly start up. Please boot the VM in GUI mode to check whether
         it is booting properly.
+      ssh_no_exit_status: |-
+        The SSH command completed, but Vagrant did not receive an exit status.
+        This indicates that the command was terminated unexpectedly. Please
+        check that the VM has sufficient memory to run the command and that no
+        processes were killed by the guest operating system.
       ssh_no_route: |-
         While attempting to connect with SSH, a "no route to host" (EHOSTUNREACH)
         error was received. Please verify your network settings are correct
@@ -1663,11 +1693,30 @@ en:
         4.2.14 contains a critical bug which prevents it from working with
         Vagrant. VirtualBox 4.2.16+ fixes this problem. Please upgrade
         VirtualBox.
-      virtualbox_disks_defined_exceed_limit: |-
-        VirtualBox only allows up to 30 disks to be attached to a single guest using the SATA Controller,
-        including the primray disk.
+      virtualbox_disks_controller_not_found: |-
+        Vagrant expected to find a storage controller called '%{name}',
+        but there is no controller with this name attached to the current VM.
+        If you have changed or removed any storage controllers, please restore
+        them to their previous configuration.
+      virtualbox_disks_no_supported_controllers: |-
+        Vagrant was unable to detect a disk controller with any of the
+        following supported types:
 
-        Please ensure only up to 30 disks are configured for your guest.
+        %{supported_types}
+
+        Please add one of the supported controller types in order to use the
+        disk configuration feature.
+      virtualbox_disks_defined_exceed_limit: |-
+        VirtualBox only allows up to %{limit} disks to be attached to the
+        storage controller '%{name}'. Please remove some disks from your disk
+        configuration, or attach a new storage controller.
+      virtualbox_disks_primary_not_found: |-
+        Vagrant was not able to detect a primary disk attached to the main
+        controller. Vagrant Disks requires that the primary disk be attached
+        to the first port of the main controller in order to manage it.
+      virtualbox_disks_unsupported_controller: |-
+        An disk operation was attempted on the controller '%{controller_name}',
+        but Vagrant doesn't support this type of disk controller.
       virtualbox_guest_property_not_found: |-
         Could not find a required VirtualBox guest property:
           %{guest_property}
@@ -1829,6 +1878,11 @@ en:
 #-------------------------------------------------------------------------------
     config:
       disk:
+        dvd_type_file_required:
+          A 'file' option is required when defining a disk of type ':dvd' for guest '%{machine}'.
+        dvd_type_primary: |-
+          Disks of type ':dvd' cannot be defined as a primary disks. Please
+          remove the 'primary' argument for disk '%{name}' on guest '%{machine}'.
         invalid_ext: |-
           Disk type '%{ext}' is not a valid disk extention for '%{name}'. Please pick one of the following supported disk types: %{exts}
         invalid_type: |-
@@ -1941,6 +1995,7 @@ en:
           Checksum type specified but "box_download_checksum" is blank
         box_download_checksum_notblank: |-
           Checksum specified but must also specify "box_download_checksum_type"
+        box_empty: "Box value for guest '%{machine_name}' is an empty string."
         box_missing: "A box must be specified."
         box_download_options_type: |-
           Found "box_download_options" specified as type '%{type}', should be a Hash
@@ -1955,8 +2010,20 @@ en:
           Ignoring provider config for validation...
         multiple_primary_disks_error: |-
           There are more than one primary disks defined for guest '%{name}'. Please ensure that only one disk has been defined as a primary disk.
+        multiple_disk_files_error: |-
+          The following disk files are used multiple times in the disk
+          configuration for the VM '%{name}':
+
+          %{disk_files}
+
+          Each disk file may only be attached to a VM once.
         multiple_disk_names_error: |-
-          Duplicate disk names defined: '%{name}'. Disk names must be unique.
+          The following disks names are defined multiple times in the disk
+          configuration for the VM '%{name}':
+
+          %{disk_names}
+
+          Disk names must be unique.
         multiple_networks_set_hostname: "Multiple networks have set `:hostname`"
         name_invalid: |-
           The sub-VM name '%{name}' is invalid. Please don't use special characters.
@@ -2208,14 +2275,17 @@ en:
 # Translations for Vagrant middleware actions
 #-------------------------------------------------------------------------------
     cap:
+      cleanup_disks:
+        disk_cleanup: |-
+          Disk '%{name}' no longer exists in Vagrant config. Removing and closing medium from guest...
+        disk_not_found: |-
+          Disk '%{name}' could not be found, and could not be properly removed. Please remove this disk manually if it still exists
       configure_disks:
-        start: "Configuring storage mediums..."
-        floppy_not_supported: "Floppy disk configuration not yet supported. Skipping disk '%{name}'..."
-        dvd_not_supported: "DVD disk configuration not yet supported. Skipping disk '%{name}'..."
-        shrink_size_not_supported: |-
-          VirtualBox does not support shrinking disk sizes. Cannot shrink '%{name}' disks size.
         create_disk: |-
           Disk '%{name}' not found in guest. Creating and attaching disk to guest...
+        floppy_not_supported: "Floppy disk configuration not yet supported. Skipping disk '%{name}'..."
+        shrink_size_not_supported: |-
+          VirtualBox does not support shrinking disk sizes. Cannot shrink '%{name}' disks size.
         resize_disk: |-
           Disk '%{name}' needs to be resized. Resizing disk...
         recovery_from_resize: |-
@@ -2224,6 +2294,7 @@ en:
           If Vagrant fails to reattach the original disk, it is recommended that you open the VirtualBox GUI and navigate to the current guests settings for '%{name}' and look at the 'storage' section. Here is where you can reattach a missing disk if Vagrant fails to do so...
         recovery_attached_disks: |-
           Disk has been reattached. Vagrant will now continue on an raise the exception receieved
+        start: "Configuring storage mediums..."
     cloud_init:
       content_type_not_set: |-
         'content_type' must be defined for a cloud_init config. Guest '%{machine}'
@@ -2324,6 +2395,8 @@ en:
           create_master:
             failure: |-
               Failed to create lock-file for master VM creation for box %{box}.
+        cloud_init_user_data_setup: |-
+          Preparing user data for cloud-init...
         customize:
           failure: |-
             A customization command failed:
@@ -2640,7 +2713,7 @@ en:
         missing_provisioner_name: |-
           Could not find provisioner name `%{name}` defined for machine `%{machine_name}` to run provisioner "%{provisioner_name}" `%{action}`.
         wrong_type: |-
-          Provisioner option `%{opt}` is not set as a valid type. Must be a string.
+          Provisioner option `%{opt}` is not set as a valid type. Must be a %{type}.
       chef:
         chef_not_detected: |-
           The chef binary (either `chef-solo` or `chef-client`) was not found on
@@ -2925,3 +2998,9 @@ en:
     pushes:
       file:
         no_destination: "File destination must be specified."
+    
+    autocomplete:
+      installed: |-
+        Autocomplete installed at paths:
+        - %{paths}
+      not_installed: "Autocomplete not installed"

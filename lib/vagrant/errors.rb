@@ -100,7 +100,7 @@ module Vagrant
 
       def translate_error(opts)
         return nil if !opts[:_key]
-        I18n.t("#{opts[:_namespace]}.#{opts[:_key]}", opts)
+        I18n.t("#{opts[:_namespace]}.#{opts[:_key]}", **opts)
       end
     end
 
@@ -304,6 +304,14 @@ module Vagrant
       error_key(:clone_machine_not_found)
     end
 
+    class CloudInitNotFound < VagrantError
+      error_key(:cloud_init_not_found)
+    end
+
+    class CloudInitCommandFailed < VagrantError
+      error_key(:cloud_init_command_failed)
+    end
+
     class CommandDeprecated < VagrantError
       error_key(:command_deprecated)
     end
@@ -338,6 +346,10 @@ module Vagrant
 
     class CorruptMachineIndex < VagrantError
       error_key(:corrupt_machine_index)
+    end
+
+    class CreateIsoHostCapNotFound < VagrantError
+      error_key(:create_iso_host_cap_not_found)
     end
 
     class DarwinMountFailed < VagrantError
@@ -426,6 +438,10 @@ module Vagrant
 
     class HostExplicitNotDetected < VagrantError
       error_key(:host_explicit_not_detected)
+    end
+
+    class ISOBuildFailed < VagrantError
+      error_key(:iso_build_failed)
     end
 
     class LinuxMountFailed < VagrantError
@@ -796,6 +812,10 @@ module Vagrant
       error_key(:ssh_key_type_not_supported)
     end
 
+    class SSHNoExitStatus < VagrantError
+      error_key(:ssh_no_exit_status)
+    end
+
     class SSHNoRoute < VagrantError
       error_key(:ssh_no_route)
     end
@@ -922,6 +942,22 @@ module Vagrant
 
     class VirtualBoxDisksDefinedExceedLimit < VagrantError
       error_key(:virtualbox_disks_defined_exceed_limit)
+    end
+
+    class VirtualBoxDisksControllerNotFound < VagrantError
+      error_key(:virtualbox_disks_controller_not_found)
+    end
+
+    class VirtualBoxDisksNoSupportedControllers < VagrantError
+      error_key(:virtualbox_disks_no_supported_controllers)
+    end
+
+    class VirtualBoxDisksPrimaryNotFound < VagrantError
+      error_key(:virtualbox_disks_primary_not_found)
+    end
+
+    class VirtualBoxDisksUnsupportedController < VagrantError
+      error_key(:virtualbox_disks_unsupported_controller)
     end
 
     class VirtualBoxGuestPropertyNotFound < VagrantError

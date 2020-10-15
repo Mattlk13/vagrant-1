@@ -1,4 +1,5 @@
 require_relative "util/ssh"
+require_relative "action/builtin/mixin_synced_folders"
 
 require "digest/md5"
 require "thread"
@@ -10,6 +11,8 @@ module Vagrant
   # API for querying the state and making state changes to the machine, which
   # is backed by any sort of provider (VirtualBox, VMware, etc.).
   class Machine
+    extend Vagrant::Action::Builtin::MixinSyncedFolders
+
     # The box that is backing this machine.
     #
     # @return [Box]
@@ -556,6 +559,41 @@ module Vagrant
       result
     end
 
+    # Returns the state of this machine. The state is queried from the
+    # backing provider, so it can be any arbitrary symbol.
+    #
+    # @param [Symbol] state of machine
+    # @return [Entry] entry of recovered machine
+    def recover_machine(state)
+      entry = @env.machine_index.get(index_uuid)
+      if entry
+        @env.machine_index.release(entry)
+        return entry
+      end
+
+      entry = MachineIndex::Entry.new(id=index_uuid, {})
+      entry.local_data_path = @env.local_data_path
+      entry.name = @name.to_s
+      entry.provider = @provider_name.to_s
+      entry.state = state
+      entry.vagrantfile_path = @env.root_path
+      entry.vagrantfile_name = @env.vagrantfile_name
+
+      if @box
+        entry.extra_data["box"] = {
+          "name"     => @box.name,
+          "provider" => @box.provider.to_s,
+          "version"  => @box.version.to_s,
+        }
+      end
+
+      @state_mutex.synchronize do
+        entry = @env.machine_index.recover(entry)
+        @env.machine_index.release(entry)
+      end
+      return entry
+    end
+
     # Returns the user ID that created this machine. This is specific to
     # the host machine that this was created on.
     #
@@ -579,6 +617,15 @@ module Vagrant
           @ui = old_ui
         end
       end
+    end
+
+    # This returns the set of shared folders that should be done for
+    # this machine. It returns the folders in a hash keyed by the
+    # implementation class for the synced folders.
+    #
+    # @return [Hash<Symbol, Hash<String, Hash>>]
+    def synced_folders
+      self.class.synced_folders(self)
     end
 
     protected
